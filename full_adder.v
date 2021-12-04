@@ -1,4 +1,4 @@
-module full_adder (Sum,Cout,a,b,Cin);
+module full_adder (a,b,Cin,Sum,Cout);
     output Sum,Cout;
     input a,b,Cin;
 
