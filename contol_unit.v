@@ -1,60 +1,97 @@
-module control_unit (opcode, alusrc, aluop, regwrite2, regwrite1, regdst, branch, bnesig, memwrite, memtoreg, memread, jsig, jalsig, nsig, luisig);
-    input [5:0] opcode;
-    output [1:0] alusrc, aluop;
-    output regwrite2, regwrite1;
-    output regdst, branch, bnesig;
-    output memwrite, memtoreg, memread;
-    output jsig, jalsig, nsig, luisig;
+module contol_unit(op_code,reg_dst,jump,beq,mem_read,mem_to_reg,alu_op,mem_write,alu_src, reg_write);    
+    input [5:0] op_code;
+    output reg[2:0] alu_op;
+    output reg reg_dst,jump,beq,mem_read,mem_to_reg ,mem_write,alu_src,reg_write;
 
-    wire lui_op, r_op, jal_op, j_op, lw_op, sw_op, bne_op, beq_op, ori_op;
+always@(*) begin
+    case(op_code)
 
-    equal_6 is_lui(lui_op, opcode, 6'b001111);
-    equal_6 is_r(r_op, opcode, 6'b000000);
-    equal_6 is_jal(jal_op, opcode, 6'b000011);
-    equal_6 is_j(j_op, opcode, 6'b000010);
-    equal_6 is_lw(lw_op, opcode, 6'b100011);
-    equal_6 is_sw(sw_op, opcode, 6'b101011);
-    equal_6 is_bne(bne_op, opcode, 6'b000101);
-    equal_6 is_beq(beq_op, opcode, 6'b000100);
-    equal_6 is_ori(ori_op, opcode, 6'b001101);
+        6'b000000 :  // R - Type 
+            begin 
+                reg_dst = 1'b1;    
+                jump = 1'b0;       
+                beq  = 1'b0;       
+                mem_read = 1'b0;   
+                mem_to_reg = 1'b0; 
+                mem_write = 1'b0;  
+                alu_src  = 1'b0;    
+                reg_write= 1'b1;   
+                alu_op = 3'b010;
+            end
+        6'b000010:  // Jump
+            begin 
+                reg_dst = 1'bx;
+                jump = 1'b1; 
+                beq  = 1'b0; 
+                mem_read = 1'b0;
+                mem_to_reg = 1'bx;
+                mem_write = 1'b0;
+                alu_src  = 1'bx;
+                reg_write= 1'b0;
+                alu_op = 3'bxxx;
+            end
+        6'b101011:  // SW
+            begin 
+                reg_dst = 1'bx; 
+                jump = 1'b0; 
+                beq  = 1'b0;
+                mem_read = 1'b0;
+                mem_to_reg = 1'bx;
+                mem_write = 1'b1;
+                alu_src  = 1'b1;
+                reg_write= 1'b0;
+                alu_op = 3'b000;
+            end
+        6'b000100:  //BEQ
+            begin 
+                reg_dst = 1'bx; 
+                jump = 1'b0; 
+                beq  = 1'b1;
+                mem_read = 1'b0;
+                mem_to_reg = 1'bx;
+                mem_write = 1'b0;
+                alu_src  = 1'b0;
+                reg_write= 1'b0;
+                alu_op = 3'b001;
+            end
+        6'b001000:  // ADDI
+            begin 
+                reg_dst = 1'b0;
+                jump = 1'b0;
+                beq  = 1'b0; 
+                mem_read = 1'b0; 
+                mem_to_reg = 1'b0;
+                mem_write = 1'b0;
+                alu_src  = 1'b1;
+                reg_write= 1'b1;
+                alu_op = 3'b100; // immediate
+            end
+        6'b100011:// LW
+            begin 
+                reg_dst = 1'b0;
+                jump = 1'b0; 
+                beq  = 1'b0;
+                mem_read = 1'b1;
+                mem_to_reg = 1'b1;
+                mem_write = 1'b0;
+                alu_src  = 1'b1; 
+                reg_write= 1'b1;
+                alu_op = 3'b101;
+            end
+        default:
+            begin
+                reg_dst = 1'bZ;
+                jump = 1'bZ; 
+                beq  = 1'bZ;
+                mem_read = 1'bZ;
+                mem_to_reg = 1'bZ;
+                mem_write = 1'bZ;
+                alu_src  = 1'bZ; 
+                reg_write= 1'bZ;
+                alu_op = 3'bZZ;
+            end
+     endcase
 
-    and luisig_comb(luisig, lui_op, lui_op);
-    and nsig_comb(nsig, r_op, r_op);
-    and jalsig_comb(jalsig, jal_op, jal_op);
-    and jsig_comb(jsig, j_op, j_op);
-    and memread_comb(memread, lw_op, lw_op);
-    and memtoreg_comb(memtoreg, lw_op, lw_op);
-    and memwrite_comb(memwrite, sw_op, sw_op);
-    and bnesig_comb(bnesig, bne_op, bne_op);
-    and branchsig_comb(branch, beq_op, beq_op);
-    and regdst_comb(regdst, r_op, r_op);
-    or regwrite1_comb(regwrite1, lw_op, jal_op, r_op, ori_op, lui_op);
-    and regwrite2_comb(regwrite2, r_op, r_op);
-    or aluop1_comb(aluop[1], r_op, ori_op);
-    or aluop0_comb(aluop[0], beq_op, bne_op, ori_op);
-    and alusrc1_comb(alusrc[1], ori_op, ori_op);
-    or alusrc0_comb(alusrc[0], lw_op, sw_op);
-endmodule
+ end
 
-module equal_6 (result, a, b);
-    input [5:0] a, b;
-    output result;
-
-    wire [5:0] r;
-
-    xnor_6x2 xnor_result(r, a, b);
-
-    and(result, r[0], r[1], r[2], r[3], r[4], r[5]);
-endmodule
-
-module xnor_6x2 (result, a, b);
-    input [5:0] a, b;
-    output [5:0] result;
-    
-    xnor m0(result[0], a[0], b[0]);
-    xnor m1(result[1], a[1], b[1]);
-    xnor m2(result[2], a[2], b[2]);
-    xnor m3(result[3], a[3], b[3]);
-    xnor m4(result[4], a[4], b[4]);
-    xnor m5(result[5], a[5], b[5]);
 endmodule
